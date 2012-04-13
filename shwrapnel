@@ -1,13 +1,13 @@
 
 
 if test -z "$BASH_VERSION"; then
-	echo "wrapper_functions requires bash"
+	echo "shwrapnel requires bash"
 	exit 1
 fi
 
 
 function debug {
-	[ "x$nfwr_verbose" = "xy" -o "x$WRAPPER_DEBUG" = "xy" ] && echo "$@" 1>&2
+	[ "x$shwrapnel_verbose" = "xy" -o "x$SHWRAPNEL_DEBUG" = "xy" ] && echo "$@" 1>&2
 }
 
 function debug_var {
@@ -21,18 +21,18 @@ function debug_array {
 }
 
 function force_message {
-	#echo "$nfwr_cmdname wrapper: $@"
-	echo "$nfwr_cmdname: $@"
+	#echo "$shwrapnel_cmdname wrapper: $@"
+	echo "$shwrapnel_cmdname: $@"
 }
 
 function message {
-	[ "x$nfwr_silent" != "xy" ] && force_message "$@"
+	[ "x$shwrapnel_silent" != "xy" ] && force_message "$@"
 }
 
-nfwr_warnings=0
+shwrapnel_warnings=0
 function warning {
 	message "Warning: $@"
-	nfwr_warnings="$(($nfwr_warnings + 1))"
+	shwrapnel_warnings="$(($shwrapnel_warnings + 1))"
 }
 
 function error {
@@ -44,38 +44,38 @@ function error {
 }
 
 
-nfwr_fullcmd="$0"
-debug_var nfwr_fullcmd
-nfwr_cmdname="${nfwr_fullcmd##*/}"
-debug_var nfwr_cmdname
+shwrapnel_fullcmd="$0"
+debug_var shwrapnel_fullcmd
+shwrapnel_cmdname="${shwrapnel_fullcmd##*/}"
+debug_var shwrapnel_cmdname
 # FIXME: remove fork
-nfwr_safe_cmdname="$(sed -e 's/[^A-Za-z0-9_]/_/g' <<< "$nfwr_cmdname")"
-debug_var nfwr_safe_cmdname
+shwrapnel_safe_cmdname="$(sed -e 's/[^A-Za-z0-9_]/_/g' <<< "$shwrapnel_cmdname")"
+debug_var shwrapnel_safe_cmdname
 
-eval nfwr_verbose="\${${nfwr_safe_cmdname}_wrapper_verbose:-n}"
-nfwr_verbose="${nfwr_verbose:-y}"
+eval shwrapnel_verbose="\${${shwrapnel_safe_cmdname}_wrapper_verbose:-n}"
+shwrapnel_verbose="${shwrapnel_verbose:-y}"
 
-eval nfwr_silent="\${${nfwr_safe_cmdname}_wrapper_silent:-n}"
-nfwr_silent="${nfwr_silent:-y}"
+eval shwrapnel_silent="\${${shwrapnel_safe_cmdname}_wrapper_silent:-n}"
+shwrapnel_silent="${shwrapnel_silent:-y}"
 
-declare -a nfwr_orig_args
-nfwr_orig_args=("$@")
-debug_array nfwr_orig_args
+declare -a shwrapnel_orig_args
+shwrapnel_orig_args=("$@")
+debug_array shwrapnel_orig_args
 
 
 function findreal {
-	local save_real="${1:-nfwr_real}"
-	local save_resolve_this="${2:-nfwr_resolve_this}"
+	local save_real="${1:-shwrapnel_real}"
+	local save_resolve_this="${2:-shwrapnel_resolve_this}"
 
-	local this="${3:-$nfwr_fullcmd}"
+	local this="${3:-$shwrapnel_fullcmd}"
 	debug_var this
 	local resolve_this="$(readlink -f "$this")"
 	debug_var resolve_this
 	local target="${this##*/}"
 	debug_var target
 
-	debug_var nfwr_${nfwr_safe_cmdname}_prevwrap
-	IFS=: eval 'local -a prevwrap=(${nfwr_'"${nfwr_safe_cmdname}"'_prevwrap#:})'
+	debug_var shwrapnel_${shwrapnel_safe_cmdname}_prevwrap
+	IFS=: eval 'local -a prevwrap=(${shwrapnel_'"${shwrapnel_safe_cmdname}"'_prevwrap#:})'
 	debug_array prevwrap
 
 	local real=""
@@ -112,9 +112,9 @@ function findreal {
 	eval "$save_resolve_this=\"$resolve_this\""
 }
 
-findreal nfwr_real nfwr_resolve_this
-if [ "x$nfwr_real" = "x" ]; then
-	error 1 "Unable to find the 'real' $nfwr_cmdname" 1>&2
+findreal shwrapnel_real shwrapnel_resolve_this
+if [ "x$shwrapnel_real" = "x" ]; then
+	error 1 "Unable to find the 'real' $shwrapnel_cmdname" 1>&2
 fi
 
 
@@ -259,34 +259,34 @@ function do_launch {
 
 function launch {
 	# The most common case of not needing to munge up the args
-	do_launch "$nfwr_real" "${nfwr_orig_args[@]}"
+	do_launch "$shwrapnel_real" "${shwrapnel_orig_args[@]}"
 }
 
 function launch_prepend {
 	# The next most common case of just prepending extra args
-	do_launch "$nfwr_real" "$@" "${nfwr_orig_args[@]}"
+	do_launch "$shwrapnel_real" "$@" "${shwrapnel_orig_args[@]}"
 }
 
 function launch_append {
 	# The next most common case of just appending extra args
-	do_launch "$nfwr_real" "${nfwr_orig_args[@]}" "$@"
+	do_launch "$shwrapnel_real" "${shwrapnel_orig_args[@]}" "$@"
 }
 
 
 
-debug_var nfwr_resolve_this
-eval "nfwr_${nfwr_safe_cmdname}_prevwrap=\"\${nfwr_${nfwr_safe_cmdname}_prevwrap}:\$nfwr_resolve_this\""
-export nfwr_${nfwr_safe_cmdname}_prevwrap
-debug_var nfwr_${nfwr_safe_cmdname}_prevwrap
+debug_var shwrapnel_resolve_this
+eval "shwrapnel_${shwrapnel_safe_cmdname}_prevwrap=\"\${shwrapnel_${shwrapnel_safe_cmdname}_prevwrap}:\$shwrapnel_resolve_this\""
+export shwrapnel_${shwrapnel_safe_cmdname}_prevwrap
+debug_var shwrapnel_${shwrapnel_safe_cmdname}_prevwrap
 
-eval nfwr_xloop="\${nfwr_${nfwr_safe_cmdname}_xloop:-0}"
-debug_var nfwr_xloop
-if [ "$nfwr_xloop" -eq "$$" ]; then
+eval shwrapnel_xloop="\${shwrapnel_${shwrapnel_safe_cmdname}_xloop:-0}"
+debug_var shwrapnel_xloop
+if [ "$shwrapnel_xloop" -eq "$$" ]; then
 	debug "Wrapper has already been run, short-circuiting" 1>&2
 	launch
 fi
-export nfwr_${nfwr_safe_cmdname}_xloop=$$
-debug_var nfwr_${nfwr_safe_cmdname}_xloop
+export shwrapnel_${shwrapnel_safe_cmdname}_xloop=$$
+debug_var shwrapnel_${shwrapnel_safe_cmdname}_xloop
 
 
 
