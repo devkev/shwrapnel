@@ -1,0 +1,295 @@
+
+
+if test -z "$BASH_VERSION"; then
+	echo "wrapper_functions requires bash"
+	exit 1
+fi
+
+
+function debug {
+	[ "x$nfwr_verbose" = "xy" -o "x$WRAPPER_DEBUG" = "xy" ] && echo "$@" 1>&2
+}
+
+function debug_var {
+	eval "debug \"${2:-$1}=\\\"\$$1\\\"\""
+}
+
+function debug_array {
+	local s
+	eval s="\${$1[@]}"
+	debug_var s "$1"
+}
+
+function force_message {
+	#echo "$nfwr_cmdname wrapper: $@"
+	echo "$nfwr_cmdname: $@"
+}
+
+function message {
+	[ "x$nfwr_silent" != "xy" ] && force_message "$@"
+}
+
+nfwr_warnings=0
+function warning {
+	message "Warning: $@"
+	nfwr_warnings="$(($nfwr_warnings + 1))"
+}
+
+function error {
+	local rc
+	rc="$1"
+	shift
+	force_message "Error: $@"
+	exit "$rc"
+}
+
+
+nfwr_fullcmd="$0"
+debug_var nfwr_fullcmd
+nfwr_cmdname="${nfwr_fullcmd##*/}"
+debug_var nfwr_cmdname
+# FIXME: remove fork
+nfwr_safe_cmdname="$(sed -e 's/[^A-Za-z0-9_]/_/g' <<< "$nfwr_cmdname")"
+debug_var nfwr_safe_cmdname
+
+eval nfwr_verbose="\${${nfwr_safe_cmdname}_wrapper_verbose:-n}"
+nfwr_verbose="${nfwr_verbose:-y}"
+
+eval nfwr_silent="\${${nfwr_safe_cmdname}_wrapper_silent:-n}"
+nfwr_silent="${nfwr_silent:-y}"
+
+declare -a nfwr_orig_args
+nfwr_orig_args=("$@")
+debug_array nfwr_orig_args
+
+
+function findreal {
+	local save_real="${1:-nfwr_real}"
+	local save_resolve_this="${2:-nfwr_resolve_this}"
+
+	local this="${3:-$nfwr_fullcmd}"
+	debug_var this
+	local resolve_this="$(readlink -f "$this")"
+	debug_var resolve_this
+	local target="${this##*/}"
+	debug_var target
+
+	debug_var nfwr_${nfwr_safe_cmdname}_prevwrap
+	IFS=: eval 'local -a prevwrap=(${nfwr_'"${nfwr_safe_cmdname}"'_prevwrap#:})'
+	debug_array prevwrap
+
+	local real=""
+	local candidates="$(type -all -path "$target")"
+	# Note: this code will break for paths that contain embedded spaces,
+	# but correcting that is too much work.
+	local i
+	for i in $candidates; do
+		debug_var i
+		local resolve_i="$(readlink -f "$i")"
+		debug_var resolve_i
+		if [ "$resolve_i" -ef "$resolve_this" ]; then
+			continue
+		fi
+
+		local found=n
+		local j
+		for j in "${prevwrap[@]}"; do
+			debug_var j
+			debug_var resolve_i
+			if [ "x$j" = "x$resolve_i" ]; then
+				found=y
+				break
+			fi
+		done
+		if [ "x$found" = "xn" ]; then
+			real="$i"
+			break
+		fi
+	done
+
+	debug_var real
+	eval "$save_real=\"$real\""
+	eval "$save_resolve_this=\"$resolve_this\""
+}
+
+findreal nfwr_real nfwr_resolve_this
+if [ "x$nfwr_real" = "x" ]; then
+	error 1 "Unable to find the 'real' $nfwr_cmdname" 1>&2
+fi
+
+
+function adjust_path_var {
+	local var="$1"
+	local suffix="$2"
+	local fs_suffix="${3:-$suffix}"
+	debug "adjust_path_var: var=$var suffix=$suffix fs_suffix=$fs_suffix"
+
+	local new=""
+
+	IFS=: eval 'local -a vals=(${!var})'
+	debug_array vals
+
+	local i
+	for i in "${vals[@]}"; do
+		debug_var i
+		if [ "x$i" = "x" ]; then
+			i="."
+		fi
+		local basename="${i%/*}"
+		local dirname="${i##*/}"
+		debug "adjust_path_var: i=$i basename=$basename dirname=$dirname"
+		if [ -d "$basename/$fs_suffix/$dirname" ]; then
+			new="$new:$basename/$fs_suffix/$dirname"
+			debug "adjust_path_var: found $basename/$fs_suffix/$dirname"
+		fi
+		if [ -d "$i/$fs_suffix" ]; then
+			new="$new:$i/$fs_suffix"
+			debug "adjust_path_var: found $i/$fs_suffix"
+		fi
+		new="$new:$i"
+	done
+	new="${new#:}"
+
+	# Must take care to not have leading/trailing :, which are interpreted as .
+	local special="$(eval "echo \$${var}_$suffix")"
+	if [ "x$special" = "x" ]; then
+		eval "$var=\"$new\""
+	elif [ "x$new" = "x" ]; then
+		eval "$var=\"$special\""
+	else
+		eval "$var=\"$special:$new\""
+	fi
+	debug_var $var
+	export $var
+}
+
+
+function convert_path_var_to_cmdline_args {
+	local var="$1"
+	local flag="$2"
+	local resultvar="${3:-opts}"
+	debug "convert_path_var_to_cmdline_args var=$var flag=$flag resultvar=$resultvar"
+
+	local -a result
+	IFS=: eval 'local -a vals=(${!var})'
+	local i
+	for i in "${vals[@]}"; do
+		debug_var i
+		if [ "x$i" = "x" ]; then
+			i="."
+		fi
+		#result[${#result[@]}]="$flag"
+		#result[${#result[@]}]="$i"
+		result[${#result[@]}]="$flag$i"
+	done
+
+	eval "$resultvar="'("${result[@]}")'
+	debug_array $resultvar
+}
+
+
+function to_var_old {
+	local newline='
+'
+	local maxlinelen="${GRAB_BOTH_MAXLINELEN:-1000}"
+	local s="$1='"
+	local n="${#s}"
+	local extra
+	while read -r -d '' -n 1; do
+		if [ x"$REPLY" = x"'" ]; then
+			REPLY="'\"'\"'"
+		fi
+		if [ "$n" -gt "$(( $maxlinelen - ${#REPLY} ))" ]; then
+			s="$s'$newline"
+			extra="$1=\"\$$1\"'"
+			s="$s$extra"
+			n="${#extra}"
+		fi
+		s="$s$REPLY"
+		n="$(( $n + ${#REPLY} ))"
+	done
+	s="$s'"
+	echo "$s"
+}
+
+function to_var {
+	local newline='
+'
+	# the extra 256 is in case of quotes.
+	local slack="$(( ${#1} - 5 - ${GRAB_BOTH_SLACK:-256} ))"
+	local maxlinelen="$(( ${GRAB_BOTH_MAXLINELEN:-4096} - $slack ))"
+	if [ "$maxlinelen" -lt "$slack" ]; then
+		maxlinelen="$slack"
+	fi
+	local protectedquote="'"\""'"\""'"
+	local s="$1=$newline"
+	while read -r -d '' -n "$maxlinelen"; do
+		s+="$1+='${REPLY//\'/$protectedquote}'$newline"
+	done
+	echo "$s$1+='${REPLY//\'/$protectedquote}'"
+}
+
+function grab_both {
+	local oname="$1" ; shift
+	local ename="$1" ; shift
+	local grab_both_rc
+	eval "$(
+		{
+			{
+				#"$@" | to_var_old "$oname" >&3
+				#"$@" | sed -e "s/'/'\''/g" | to_var "$oname" >&3
+				"$@" | to_var "$oname" >&3
+				echo "grab_both_rc='${PIPESTATUS[0]}'" >&3
+			#} 2>&1 | to_var_old "$ename"
+			#} 2>&1 | sed -e "s/'/'\''/g" | to_var "$ename"
+			} 2>&1 | to_var "$ename"
+		} 3>&1
+	)"
+	return $grab_both_rc
+}
+
+
+
+function do_launch {
+	debug exec "$@"                                                                                                          
+	exec "$@"                                                                                                          
+}
+
+
+
+function launch {
+	# The most common case of not needing to munge up the args
+	do_launch "$nfwr_real" "${nfwr_orig_args[@]}"
+}
+
+function launch_prepend {
+	# The next most common case of just prepending extra args
+	do_launch "$nfwr_real" "$@" "${nfwr_orig_args[@]}"
+}
+
+function launch_append {
+	# The next most common case of just appending extra args
+	do_launch "$nfwr_real" "${nfwr_orig_args[@]}" "$@"
+}
+
+
+
+debug_var nfwr_resolve_this
+eval "nfwr_${nfwr_safe_cmdname}_prevwrap=\"\${nfwr_${nfwr_safe_cmdname}_prevwrap}:\$nfwr_resolve_this\""
+export nfwr_${nfwr_safe_cmdname}_prevwrap
+debug_var nfwr_${nfwr_safe_cmdname}_prevwrap
+
+eval nfwr_xloop="\${nfwr_${nfwr_safe_cmdname}_xloop:-0}"
+debug_var nfwr_xloop
+if [ "$nfwr_xloop" -eq "$$" ]; then
+	debug "Wrapper has already been run, short-circuiting" 1>&2
+	launch
+fi
+export nfwr_${nfwr_safe_cmdname}_xloop=$$
+debug_var nfwr_${nfwr_safe_cmdname}_xloop
+
+
+
+
+# vim:syntax=sh:ai:si:
+
