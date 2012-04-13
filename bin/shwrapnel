@@ -50,25 +50,6 @@ function _shwrapnel_error {
 }
 
 
-shwrapnel_fullcmd="$0"
-shwrapnel debug_var shwrapnel_fullcmd
-shwrapnel_cmdname="${shwrapnel_fullcmd##*/}"
-shwrapnel debug_var shwrapnel_cmdname
-# FIXME: remove fork
-shwrapnel_safe_cmdname="$(sed -e 's/[^A-Za-z0-9_]/_/g' <<< "$shwrapnel_cmdname")"
-shwrapnel debug_var shwrapnel_safe_cmdname
-
-eval shwrapnel_verbose="\${${shwrapnel_safe_cmdname}_wrapper_verbose:-n}"
-shwrapnel_verbose="${shwrapnel_verbose:-y}"
-
-eval shwrapnel_silent="\${${shwrapnel_safe_cmdname}_wrapper_silent:-n}"
-shwrapnel_silent="${shwrapnel_silent:-y}"
-
-declare -a shwrapnel_orig_args
-shwrapnel_orig_args=("$@")
-shwrapnel debug_array shwrapnel_orig_args
-
-
 function _shwrapnel_findreal {
 	local save_real="${1:-shwrapnel_real}"
 	local save_resolve_this="${2:-shwrapnel_resolve_this}"
@@ -117,11 +98,6 @@ function _shwrapnel_findreal {
 	eval "$save_real=\"$real\""
 	eval "$save_resolve_this=\"$resolve_this\""
 }
-
-shwrapnel findreal shwrapnel_real shwrapnel_resolve_this
-if [ "x$shwrapnel_real" = "x" ]; then
-	shwrapnel error 1 "shwrapnel: Error: Unable to find the 'real' $shwrapnel_cmdname" 1>&2
-fi
 
 
 function _shwrapnel_adjust_path_var {
@@ -278,6 +254,32 @@ function _shwrapnel_launch_append {
 	shwrapnel do_launch "$shwrapnel_real" "${shwrapnel_orig_args[@]}" "$@"
 }
 
+
+
+
+shwrapnel_fullcmd="$0"
+shwrapnel debug_var shwrapnel_fullcmd
+shwrapnel_cmdname="${shwrapnel_fullcmd##*/}"
+shwrapnel debug_var shwrapnel_cmdname
+# FIXME: remove fork
+shwrapnel_safe_cmdname="$(sed -e 's/[^A-Za-z0-9_]/_/g' <<< "$shwrapnel_cmdname")"
+shwrapnel debug_var shwrapnel_safe_cmdname
+
+eval shwrapnel_verbose="\${${shwrapnel_safe_cmdname}_wrapper_verbose:-n}"
+shwrapnel_verbose="${shwrapnel_verbose:-y}"
+
+eval shwrapnel_silent="\${${shwrapnel_safe_cmdname}_wrapper_silent:-n}"
+shwrapnel_silent="${shwrapnel_silent:-y}"
+
+declare -a shwrapnel_orig_args
+shwrapnel_orig_args=("$@")
+shwrapnel debug_array shwrapnel_orig_args
+
+
+shwrapnel findreal shwrapnel_real shwrapnel_resolve_this
+if [ "x$shwrapnel_real" = "x" ]; then
+	shwrapnel error 1 "shwrapnel: Error: Unable to find the 'real' $shwrapnel_cmdname" 1>&2
+fi
 
 
 shwrapnel debug_var shwrapnel_resolve_this
