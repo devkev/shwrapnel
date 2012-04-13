@@ -232,26 +232,50 @@ function _shwrapnel_grab_both {
 
 
 
-function _shwrapnel_do_launch {
-	shwrapnel debug exec "$@"                                                                                                          
-	exec "$@"                                                                                                          
+
+
+function _shwrapnel_set_real_cmd {
+	shwrapnel_real="$1"
+}
+
+function _shwrapnel_set_args {
+	shwrapnel_args=("$@")
+}
+
+function _shwrapnel_prepend_args {
+	shwrapnel_args=("$@" "${shwrapnel_args[@]}")
+}
+
+function _shwrapnel_append_args {
+	shwrapnel_args=("${shwrapnel_args[@]}" "$@")
 }
 
 
+function _shwrapnel_run {
+	local -a args
+	if [ $# -eq 0 ]; then
+		args=("${shwrapnel_args[@]}")
+	else
+		args=("$@")
+	fi
+	shwrapnel debug $_precmd "$shwrapnel_real" "${args[@]}"
+	$_precmd "$shwrapnel_real" "${args[@]}"
+}
 
 function _shwrapnel_launch {
-	# The most common case of not needing to munge up the args
-	shwrapnel do_launch "$shwrapnel_real" "${shwrapnel_orig_args[@]}"
+	_precmd=exec shwrapnel run
 }
 
 function _shwrapnel_launch_prepend {
-	# The next most common case of just prepending extra args
-	shwrapnel do_launch "$shwrapnel_real" "$@" "${shwrapnel_orig_args[@]}"
+	# Deprecated
+	shwrapnel prepend_args "$@"
+	shwrapnel launch
 }
 
 function _shwrapnel_launch_append {
-	# The next most common case of just appending extra args
-	shwrapnel do_launch "$shwrapnel_real" "${shwrapnel_orig_args[@]}" "$@"
+	# Deprecated
+	shwrapnel append_args "$@"
+	shwrapnel launch
 }
 
 
@@ -271,15 +295,18 @@ shwrapnel_verbose="${shwrapnel_verbose:-y}"
 eval shwrapnel_silent="\${${shwrapnel_safe_cmdname}_wrapper_silent:-n}"
 shwrapnel_silent="${shwrapnel_silent:-y}"
 
-declare -a shwrapnel_orig_args
+declare -a -r shwrapnel_orig_args
 shwrapnel_orig_args=("$@")
 shwrapnel debug_array shwrapnel_orig_args
+declare -a shwrapnel_args
+shwrapnel_args=("$@")
 
 
-shwrapnel findreal shwrapnel_real shwrapnel_resolve_this
-if [ "x$shwrapnel_real" = "x" ]; then
+shwrapnel findreal shwrapnel_orig_real shwrapnel_resolve_this
+if [ "x$shwrapnel_orig_real" = "x" ]; then
 	shwrapnel error 1 "shwrapnel: Error: Unable to find the 'real' $shwrapnel_cmdname" 1>&2
 fi
+shwrapnel_real="$shwrapnel_orig_real"
 
 
 shwrapnel debug_var shwrapnel_resolve_this
