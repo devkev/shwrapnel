@@ -332,8 +332,7 @@ shwrapnel_verbose="${shwrapnel_verbose:-y}"
 eval shwrapnel_silent="\${${shwrapnel_safe_cmdname}_wrapper_silent:-n}"
 shwrapnel_silent="${shwrapnel_silent:-y}"
 
-declare -a -r shwrapnel_orig_args
-shwrapnel_orig_args=("$@")
+declare -a -r shwrapnel_orig_args=("$@")
 shwrapnel debug_array shwrapnel_orig_args
 declare -a shwrapnel_args
 shwrapnel_args=("$@")
