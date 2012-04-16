@@ -360,7 +360,8 @@ fi
 export shwrapnel_${shwrapnel_safe_cmdname}_xloop=$$
 shwrapnel debug_var shwrapnel_${shwrapnel_safe_cmdname}_xloop
 
-
+# Return true if we get this far.
+:
 
 
 # vim:syntax=sh:ai:si:
