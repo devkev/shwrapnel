@@ -24,6 +24,15 @@ if test -z "$BASH_VERSION"; then
 fi
 
 
+if [ "${POSIXLY_CORRECT+set}" = "set" ]; then
+	shwrapnel_posixly_correct_set=y
+	shwrapnel_posixly_correct="$POSIXLY_CORRECT"
+	unset POSIXLY_CORRECT
+else
+	shwrapnel_posixly_correct_set=n
+fi
+
+
 function shwrapnel {
 	local fn="$1"
 	shift
@@ -276,8 +285,18 @@ function _shwrapnel_run {
 	else
 		args=("$@")
 	fi
+
 	shwrapnel debug $_precmd "$shwrapnel_real" "${args[@]}"
+
+	if [ "$shwrapnel_posixly_correct_set" = y ]; then
+		export POSIXLY_CORRECT="$shwrapnel_posixly_correct"
+	fi
+
 	$_precmd "$shwrapnel_real" "${args[@]}"
+
+	if [ "$shwrapnel_posixly_correct_set" = y ]; then
+		unset POSIXLY_CORRECT
+	fi
 }
 
 function _shwrapnel_launch {
