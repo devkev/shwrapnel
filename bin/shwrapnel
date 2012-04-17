@@ -304,7 +304,8 @@ function _shwrapnel_run {
 }
 
 function _shwrapnel_launch {
-	_precmd=exec shwrapnel run
+	_precmd=exec
+	shwrapnel run
 }
 
 function _shwrapnel_launch_prepend {
