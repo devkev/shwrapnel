@@ -278,6 +278,8 @@ function _shwrapnel_append_args {
 }
 
 
+_shwrapnel_precmd=
+
 function _shwrapnel_run {
 	if [ "x$shwrapnel_real" = "x" ]; then
 		shwrapnel error 1 "shwrapnel: unable to find the 'real' $shwrapnel_cmdname" 1>&2
@@ -290,13 +292,13 @@ function _shwrapnel_run {
 		args=("$@")
 	fi
 
-	shwrapnel debug $_precmd "$shwrapnel_real" "${args[@]}"
+	shwrapnel debug $_shwrapnel_precmd "$shwrapnel_real" "${args[@]}"
 
 	if [ "$shwrapnel_posixly_correct_set" = y ]; then
 		export POSIXLY_CORRECT="$shwrapnel_posixly_correct"
 	fi
 
-	$_precmd "$shwrapnel_real" "${args[@]}"
+	$_shwrapnel_precmd "$shwrapnel_real" "${args[@]}"
 
 	if [ "$shwrapnel_posixly_correct_set" = y ]; then
 		unset POSIXLY_CORRECT
@@ -304,7 +306,7 @@ function _shwrapnel_run {
 }
 
 function _shwrapnel_launch {
-	_precmd=exec
+	_shwrapnel_precmd=exec
 	shwrapnel run "$@"
 }
 
