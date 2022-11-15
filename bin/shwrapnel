@@ -299,10 +299,13 @@ function _shwrapnel_run {
 	fi
 
 	$_shwrapnel_precmd "$shwrapnel_real" "${args[@]}"
+	local rc="$?"
 
 	if [ "$shwrapnel_posixly_correct_set" = y ]; then
 		unset POSIXLY_CORRECT
 	fi
+
+	return "$rc"
 }
 
 function _shwrapnel_launch {
