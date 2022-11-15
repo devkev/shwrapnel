@@ -313,14 +313,14 @@ function _shwrapnel_launch {
 	shwrapnel run "$@"
 }
 
+# Deprecated
 function _shwrapnel_launch_prepend {
-	# Deprecated
 	shwrapnel prepend_args "$@"
 	shwrapnel launch
 }
 
+# Deprecated
 function _shwrapnel_launch_append {
-	# Deprecated
 	shwrapnel append_args "$@"
 	shwrapnel launch
 }
