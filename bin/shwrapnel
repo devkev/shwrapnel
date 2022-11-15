@@ -25,11 +25,11 @@ fi
 
 
 if [ "${POSIXLY_CORRECT+set}" = "set" ]; then
-	shwrapnel_posixly_correct_set=y
-	shwrapnel_posixly_correct="$POSIXLY_CORRECT"
+	_shwrapnel_posixly_correct_set=y
+	_shwrapnel_posixly_correct="$POSIXLY_CORRECT"
 	unset POSIXLY_CORRECT
 else
-	shwrapnel_posixly_correct_set=n
+	_shwrapnel_posixly_correct_set=n
 fi
 
 
@@ -294,14 +294,14 @@ function _shwrapnel_run {
 
 	shwrapnel debug $_shwrapnel_precmd "$shwrapnel_real" "${args[@]}"
 
-	if [ "$shwrapnel_posixly_correct_set" = y ]; then
-		export POSIXLY_CORRECT="$shwrapnel_posixly_correct"
+	if [ "$_shwrapnel_posixly_correct_set" = y ]; then
+		export POSIXLY_CORRECT="$_shwrapnel_posixly_correct"
 	fi
 
 	$_shwrapnel_precmd "$shwrapnel_real" "${args[@]}"
 	local rc="$?"
 
-	if [ "$shwrapnel_posixly_correct_set" = y ]; then
+	if [ "$_shwrapnel_posixly_correct_set" = y ]; then
 		unset POSIXLY_CORRECT
 	fi
 
