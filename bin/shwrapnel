@@ -20,7 +20,7 @@
 
 if test -z "$BASH_VERSION"; then
 	echo "shwrapnel requires bash"
-	exit 1
+	return 1
 fi
 
 
@@ -73,7 +73,7 @@ function _shwrapnel_error {
 	rc="$1"
 	shift
 	shwrapnel force_message "Error: $@"
-	exit "$rc"
+	return "$rc"
 }
 
 
